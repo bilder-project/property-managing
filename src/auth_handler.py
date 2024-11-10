@@ -3,10 +3,14 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import jwt
 import os
 from dotenv import load_dotenv 
+from supabase import create_client, Client
 
 # Load environment variables from .env file
 load_dotenv()
 
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET")
 
 security = HTTPBearer()  # Automatically expects 'Authorization: Bearer <token>'
@@ -22,3 +26,9 @@ def verify_jwt_token(credentials: HTTPAuthorizationCredentials = Security(securi
     except Exception as e:
         # Raise an HTTP 401 error if the token is invalid or expired
         raise HTTPException(status_code=401, detail="Invalid or expired token")
+    
+def get_supabase_client_with_jwt(jwt_token: str) -> Client:
+    headers = {
+        "Authorization": f"Bearer {jwt_token}"
+    }
+    return create_client(SUPABASE_URL, SUPABASE_KEY, options={"headers": headers})
