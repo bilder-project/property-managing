@@ -27,8 +27,5 @@ def verify_jwt_token(credentials: HTTPAuthorizationCredentials = Security(securi
         # Raise an HTTP 401 error if the token is invalid or expired
         raise HTTPException(status_code=401, detail="Invalid or expired token")
     
-def get_supabase_client_with_jwt(jwt_token: str) -> Client:
-    headers = {
-        "Authorization": f"Bearer {jwt_token}"
-    }
-    return create_client(SUPABASE_URL, SUPABASE_KEY, options={"headers": headers})
+def get_supabase_client() -> Client:
+    return create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)

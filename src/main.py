@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException, Depends
 from models import Property, PropertyUpdate
-from auth_handler import verify_jwt_token, get_supabase_client_with_jwt
+from auth_handler import verify_jwt_token, get_supabase_client
 
 app = FastAPI()
 
@@ -9,10 +9,10 @@ async def root():
     return {"Hello": "World"}
 
 # Create new property
-@app.post("/properties", dependencies=[Depends(verify_jwt_token)])
-async def create_property(property: Property, jwt_token: str = Depends(verify_jwt_token)):
+@app.post("/properties")
+async def create_property(property: Property):
     try:
-        supabase = get_supabase_client_with_jwt(jwt_token)
+        supabase = get_supabase_client()
 
         response = (
             supabase.table("properties")
@@ -25,10 +25,10 @@ async def create_property(property: Property, jwt_token: str = Depends(verify_jw
         raise HTTPException(status_code=400, detail=str(e))
 
 # Get property with ID
-@app.get("/properties/{property_id}", dependencies=[Depends(verify_jwt_token)])
-async def get_property(property_id: str, jwt_token: str = Depends(verify_jwt_token)):
+@app.get("/properties/{property_id}")
+async def get_property(property_id: str):
     try:
-        supabase = get_supabase_client_with_jwt(jwt_token)
+        supabase = get_supabase_client()
 
         response = (
             supabase.table("properties")
@@ -45,10 +45,10 @@ async def get_property(property_id: str, jwt_token: str = Depends(verify_jwt_tok
         raise HTTPException(status_code=400, detail=str(e))
 
 # Get all properties
-@app.get("/properties", dependencies=[Depends(verify_jwt_token)])
-async def get_properties(jwt_token: str = Depends(verify_jwt_token)):
+@app.get("/properties")
+async def get_properties():
     try:
-        supabase = get_supabase_client_with_jwt(jwt_token)
+        supabase = get_supabase_client()
 
         response = (
             supabase.table("properties")
@@ -64,10 +64,10 @@ async def get_properties(jwt_token: str = Depends(verify_jwt_token)):
         raise HTTPException(status_code=400, detail=str(e))
     
 # Get all properties of a user with ID
-@app.get("/properties/user/{user_id}", dependencies=[Depends(verify_jwt_token)])
-async def get_properties_of_user(user_id: str, jwt_token: str = Depends(verify_jwt_token)):
+@app.get("/properties/user/{user_id}")
+async def get_properties_of_user(user_id: str):
     try:
-        supabase = get_supabase_client_with_jwt(jwt_token)
+        supabase = get_supabase_client()
 
         response = (
             supabase.table("properties")
@@ -84,10 +84,10 @@ async def get_properties_of_user(user_id: str, jwt_token: str = Depends(verify_j
         raise HTTPException(status_code=400, detail=str(e))
 
 # Delete property with ID
-@app.delete("/properties/{property_id}", dependencies=[Depends(verify_jwt_token)])
-async def delete_property(property_id: str, jwt_token: str = Depends(verify_jwt_token)):
+@app.delete("/properties/{property_id}")
+async def delete_property(property_id: str):
     try:
-        supabase = get_supabase_client_with_jwt(jwt_token)
+        supabase = get_supabase_client()
 
         response = (
             supabase.table("properties")
@@ -104,10 +104,10 @@ async def delete_property(property_id: str, jwt_token: str = Depends(verify_jwt_
         raise HTTPException(status_code=400, detail=str(e))
     
 # Update property with ID
-@app.put("/properties/{property_id}", dependencies=[Depends(verify_jwt_token)])
-async def update_property(property_id: str, property: PropertyUpdate, jwt_token: str = Depends(verify_jwt_token)):
+@app.put("/properties/{property_id}")
+async def update_property(property_id: str, property: PropertyUpdate):
     try:
-        supabase = get_supabase_client_with_jwt(jwt_token)
+        supabase = get_supabase_client()
 
         update_data = property.dict(exclude_unset=True)
 
