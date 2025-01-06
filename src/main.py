@@ -1,129 +1,268 @@
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException
 from models import Property, PropertyUpdate
-from auth_handler import verify_jwt_token, get_supabase_client
+from auth_handler import get_supabase_client
+import pybreaker
+import re
+import requests
+from tenacity import (
+    retry,
+    stop_after_attempt,
+    wait_exponential,
+    retry_if_exception_type,
+    RetryError,
+)
 
 app = FastAPI()
 
-@app.get("/")
-async def root():
-    return {"Hello": "World"}
+# Circuit Breaker
+breaker = pybreaker.CircuitBreaker(fail_max=3, reset_timeout=30)
+
+
+# Retry Configuration
+def is_transient_error(exception):
+    """Define what qualifies as a transient error."""
+    return isinstance(exception, requests.exceptions.RequestException)
+
+
+retry_strategy = retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=2, max=6),
+    retry=retry_if_exception_type(requests.exceptions.RequestException),
+)
+
+
+# Helper function with Circuit Breaker for creating property data
+@retry_strategy
+@breaker
+def create_property_in_supabase(property: Property):
+    supabase = get_supabase_client()
+
+    response = supabase.table("properties").insert(property.dict()).execute()
+
+    if response.status_code != 200:
+        raise HTTPException(status_code=response.status_code, detail=response.text)
+
+    return response
+
 
 # Create new property
 @app.post("/properties")
 async def create_property(property: Property):
     try:
-        supabase = get_supabase_client()
+        data = create_property_in_supabase(property)
+        return {"Property added successfully: ": data}
 
-        response = (
-            supabase.table("properties")
-            .insert(property.dict())
-            .execute()
+    except RetryError as retry_error:
+        raise HTTPException(
+            status_code=503,
+            detail="Service temporarily unavailable after multiple retry attempts. Please try again later."
         )
 
-        return {"Property added successfully: ": response}
+    except pybreaker.CircuitBreakerError:
+        raise HTTPException(
+            status_code=503,
+            detail="Service temporarily unavailable due to repeated failures.",
+        )
+
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+# Helper function with Circuit Breaker for getting data by ID
+@retry_strategy
+@breaker
+def get_property_from_supabase(property_id: str):
+    supabase = get_supabase_client()
+
+    response = supabase.table("properties").select("*").eq("id", property_id).execute()
+
+    if response.status_code != 200:
+        raise HTTPException(status_code=response.status_code, detail=response.text)
+
+    return response
+
 
 # Get property with ID
 @app.get("/properties/{property_id}")
 async def get_property(property_id: str):
     try:
-        supabase = get_supabase_client()
+        data = get_property_from_supabase(property_id)
+        return data
 
-        response = (
-            supabase.table("properties")
-            .select("*")
-            .eq("id", property_id)
-            .execute()
+    except RetryError as retry_error:
+        raise HTTPException(
+            status_code=503,
+            detail="Service temporarily unavailable after multiple retry attempts. Please try again later."
         )
 
-        if (response.data == []):
-            raise HTTPException(status_code=404, detail=str("No properties found with ID {property_id}."))
+    except pybreaker.CircuitBreakerError:
+        raise HTTPException(
+            status_code=503,
+            detail="Service temporarily unavailable due to repeated failures.",
+        )
 
-        return response
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+# Helper function with Circuit Breaker for getting data
+@retry_strategy
+@breaker
+def get_properties_from_supabase():
+    supabase = get_supabase_client()
+
+    response = supabase.table("properties").select("*").execute()
+
+    if response.status_code != 200:
+        raise HTTPException(status_code=response.status_code, detail=response.text)
+
+    return response
+
 
 # Get all properties
 @app.get("/properties")
 async def get_properties():
     try:
-        supabase = get_supabase_client()
+        data = get_properties_from_supabase()
+        return data
 
-        response = (
-            supabase.table("properties")
-            .select("*")
-            .execute()
+    except RetryError as retry_error:
+        raise HTTPException(
+            status_code=503,
+            detail="Service temporarily unavailable after multiple retry attempts. Please try again later."
         )
 
-        if (response.data == []):
-            raise HTTPException(status_code=404, detail=str("No properties found."))
+    except pybreaker.CircuitBreakerError:
+        raise HTTPException(
+            status_code=503,
+            detail="Service temporarily unavailable due to repeated failures.",
+        )
 
-        return response
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
-    
+
+
+# Helper function with Circuit Breaker for getting data of user
+@retry_strategy
+@breaker
+def get_properties_from_user_from_supabase(user_id: str):
+    supabase = get_supabase_client()
+
+    response = supabase.table("properties").select("*").eq("user_id", user_id).execute()
+
+    if response.data == []:
+        raise HTTPException(
+            status_code=404, detail=str("No properties found for requested user.")
+        )
+
+    return response
+
+
 # Get all properties of a user with ID
 @app.get("/properties/user/{user_id}")
 async def get_properties_of_user(user_id: str):
     try:
-        supabase = get_supabase_client()
+        data = get_properties_from_user_from_supabase(user_id)
+        return data
 
-        response = (
-            supabase.table("properties")
-            .select("*")
-            .eq("user_id", user_id)
-            .execute()
+    except RetryError as retry_error:
+        raise HTTPException(
+            status_code=503,
+            detail="Service temporarily unavailable after multiple retry attempts. Please try again later."
         )
 
-        if (response.data == []):
-            raise HTTPException(status_code=404, detail=str("No properties found for requested user."))
+    except pybreaker.CircuitBreakerError:
+        raise HTTPException(
+            status_code=503,
+            detail="Service temporarily unavailable due to repeated failures.",
+        )
 
-        return response
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+# Helper function with Circuit Breaker for deleting data
+@retry_strategy
+@breaker
+def delete_property_from_supabase(property_id: str):
+    supabase = get_supabase_client()
+
+    response = supabase.table("properties").delete().eq("id", property_id).execute()
+
+    if response.data == []:
+        raise HTTPException(
+            status_code=404,
+            detail=str("No properties found with ID {property_id}."),
+        )
+
+    return response
+
 
 # Delete property with ID
 @app.delete("/properties/{property_id}")
 async def delete_property(property_id: str):
     try:
-        supabase = get_supabase_client()
+        data = delete_property_from_supabase(property_id)
+        return data
 
-        response = (
-            supabase.table("properties")
-            .delete()
-            .eq("id", property_id)
-            .execute()
+    except RetryError as retry_error:
+        raise HTTPException(
+            status_code=503,
+            detail="Service temporarily unavailable after multiple retry attempts. Please try again later."
         )
 
-        if (response.data == []):
-            raise HTTPException(status_code=404, detail=str("No properties found with ID {property_id}."))
+    except pybreaker.CircuitBreakerError:
+        raise HTTPException(
+            status_code=503,
+            detail="Service temporarily unavailable due to repeated failures.",
+        )
 
-        return response
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
-    
+
+
+# Helper function with Circuit Breaker for updating data
+@retry_strategy
+@breaker
+def update_property_in_supabase(property_id: str, property: PropertyUpdate):
+    supabase = get_supabase_client()
+
+    update_data = property.dict(exclude_unset=True)
+
+    if not update_data:
+        raise HTTPException(status_code=400, detail="No fields provided for update.")
+
+    response = (
+        supabase.table("properties").update(update_data).eq("id", property_id).execute()
+    )
+
+    if response.data == []:
+        raise HTTPException(
+            status_code=404,
+            detail=str("No properties found with ID {property_id}."),
+        )
+
+    return response
+
+
 # Update property with ID
 @app.put("/properties/{property_id}")
 async def update_property(property_id: str, property: PropertyUpdate):
     try:
-        supabase = get_supabase_client()
+        data = update_property_in_supabase(property_id, property)
+        return {"Property updated successfully: ": data}
 
-        update_data = property.dict(exclude_unset=True)
-
-        if not update_data:
-            raise HTTPException(status_code=400, detail="No fields provided for update.")
-        
-        response = (
-            supabase.table("properties")
-            .update(update_data)
-            .eq("id", property_id)
-            .execute()
+    except RetryError as retry_error:
+        raise HTTPException(
+            status_code=503,
+            detail="Service temporarily unavailable after multiple retry attempts. Please try again later."
         )
 
-        if (response.data == []):
-            raise HTTPException(status_code=404, detail=str("No properties found with ID {property_id}."))
+    except pybreaker.CircuitBreakerError:
+        raise HTTPException(
+            status_code=503,
+            detail="Service temporarily unavailable due to repeated failures.",
+        )
 
-        return {"Property updated successfully: ": response}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
