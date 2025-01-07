@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: property-managing
-          image: nepremicnine/property-managing
+          image: potocnikvid/nepremicnine-property-managing
           imagePullPolicy: Always
           ports:
             - containerPort: 8080
@@ -39,6 +39,10 @@ spec:
                 secretKeyRef:
                   name: secrets
                   key: SUPABASE_JWT_SECRET
+            - name: PROPERTY_MANAGING_SERVER_PORT
+              value: "8080"
+            - name: PROPERTY_MANAGING_SERVER_MODE
+              value: "release"
           resources:
             limits:
               cpu: "0.1"
