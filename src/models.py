@@ -10,6 +10,8 @@ class Property(BaseModel):
     user_id: str
     image: str
     type: str
+    location: str
+    size: int
 
 class PropertyUpdate(BaseModel):
     name: Optional[str] = None
@@ -20,3 +22,5 @@ class PropertyUpdate(BaseModel):
     user_id: Optional[str] = None
     image: Optional[str] = None
     type: Optional[str] = None
+    location: Optional[str] = None
+    size: Optional[int] = None
