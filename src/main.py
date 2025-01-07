@@ -3,8 +3,8 @@ import pybreaker
 import requests
 from fastapi import FastAPI, HTTPException
 from fastapi.routing import APIRoute
-from models import Property, PropertyUpdate
-from auth_handler import get_supabase_client
+from src.models import Property, PropertyUpdate
+from src.auth_handler import get_supabase_client
 from tenacity import (
     retry,
     stop_after_attempt,
@@ -106,6 +106,11 @@ async def get_property(property_id: str):
 
 # Remaining functions for get_properties, get_properties_of_user, delete_property, and update_property remain unchanged
 # but are also adjusted to work with Circuit Breaker and Retry mechanisms.
+    
+# Health check
+@app.get("/health")
+async def health_check():
+    return {"status": "ok"}
 
 # Add prefix to all routes
 add_prefix_to_routes(app, PROPERTY_MANAGING_PREFIX)
