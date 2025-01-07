@@ -50,7 +50,7 @@ def create_property_in_supabase(property: Property):
     return response
 
 # Create new property
-@app.post(f"${PROPERTY_MANAGING_PREFIX}"+"/properties")
+@app.post(f"{PROPERTY_MANAGING_PREFIX}/properties")
 async def create_property(property: Property):
     try:
         data = create_property_in_supabase(property)
@@ -79,7 +79,7 @@ def get_property_from_supabase(property_id: str):
     return response
 
 # Get property with ID
-@app.get(f"${PROPERTY_MANAGING_PREFIX}"+"/properties/{property_id}")
+@app.get(f"{PROPERTY_MANAGING_PREFIX}"+"/properties/{property_id}")
 async def get_property(property_id: str):
     try:
         data = get_property_from_supabase(property_id)
@@ -101,7 +101,7 @@ async def get_property(property_id: str):
 # but are also adjusted to work with Circuit Breaker and Retry mechanisms.
     
 # Health check
-@app.get(f"${PROPERTY_MANAGING_PREFIX}"+"/health")
+@app.get(f"{PROPERTY_MANAGING_PREFIX}/health")
 async def health_check():
     return {"status": "ok"}
 
