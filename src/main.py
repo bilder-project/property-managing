@@ -20,7 +20,7 @@ load_dotenv()
 # Read environment variables
 PROPERTY_MANAGING_SERVER_PORT = os.getenv("PROPERTY_MANAGING_SERVER_PORT", "8080")
 PROPERTY_MANAGING_SERVER_MODE = os.getenv("PROPERTY_MANAGING_SERVER_MODE", "development")
-PROPERTY_MANAGING_PREFIX = f"/property-managing" if PROPERTY_MANAGING_SERVER_MODE == "production" else ""
+PROPERTY_MANAGING_PREFIX = f"/property-managing" if PROPERTY_MANAGING_SERVER_MODE == "release" else ""
 
 # Initialize the FastAPI app
 app = FastAPI()
