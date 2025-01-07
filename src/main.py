@@ -25,13 +25,6 @@ PROPERTY_MANAGING_PREFIX = f"/property-managing" if PROPERTY_MANAGING_SERVER_MOD
 # Initialize the FastAPI app
 app = FastAPI()
 
-# Add prefix to all routes dynamically
-def add_prefix_to_routes(app: FastAPI, prefix: str):
-    """Add a prefix to all API routes."""
-    for route in app.routes:
-        if isinstance(route, APIRoute):
-            route.path = f"{prefix}{route.path}"
-
 # Circuit Breaker
 breaker = pybreaker.CircuitBreaker(fail_max=3, reset_timeout=30)
 
@@ -57,7 +50,7 @@ def create_property_in_supabase(property: Property):
     return response
 
 # Create new property
-@app.post("/properties")
+@app.post(f"${PROPERTY_MANAGING_PREFIX}"+"/properties")
 async def create_property(property: Property):
     try:
         data = create_property_in_supabase(property)
@@ -86,7 +79,7 @@ def get_property_from_supabase(property_id: str):
     return response
 
 # Get property with ID
-@app.get("/properties/{property_id}")
+@app.get(f"${PROPERTY_MANAGING_PREFIX}"+"/properties/{property_id}")
 async def get_property(property_id: str):
     try:
         data = get_property_from_supabase(property_id)
@@ -108,9 +101,7 @@ async def get_property(property_id: str):
 # but are also adjusted to work with Circuit Breaker and Retry mechanisms.
     
 # Health check
-@app.get("/health")
+@app.get(f"${PROPERTY_MANAGING_PREFIX}"+"/health")
 async def health_check():
     return {"status": "ok"}
 
-# Add prefix to all routes
-add_prefix_to_routes(app, PROPERTY_MANAGING_PREFIX)
