@@ -124,19 +124,23 @@ async def get_property(property_id: str):
 # Helper function with Circuit Breaker for getting data
 @retry_strategy
 @breaker
-def get_properties_from_supabase():
+def get_properties_from_supabase(count: int):
     supabase = get_supabase_client()
 
-    response = supabase.table("properties").select("*").execute()
+    if count == 0:
+        response = supabase.table("properties").select("*").execute()
+    else:
+        response = supabase.table("properties").select("*").limit(count).execute()
 
     return response
 
 
 # Get all properties
 @app.get(f"{PROPERTY_MANAGING_PREFIX}/properties")
-async def get_properties():
+# Make count not required
+async def get_properties(count: int = 0):
     try:
-        data = get_properties_from_supabase()
+        data = get_properties_from_supabase(count)
         return data
 
     except RetryError as retry_error:
