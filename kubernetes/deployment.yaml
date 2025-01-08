@@ -39,6 +39,11 @@ spec:
                 secretKeyRef:
                   name: secrets
                   key: SUPABASE_JWT_SECRET
+            - name: FRONTEND_URL
+              valueFrom:
+                secretKeyRef:
+                  name: secrets
+                  key: FRONTEND_URL
             - name: PROPERTY_MANAGING_SERVER_PORT
               value: "8080"
             - name: PROPERTY_MANAGING_SERVER_MODE

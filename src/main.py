@@ -13,6 +13,7 @@ from tenacity import (
     RetryError,
 )
 from dotenv import load_dotenv
+from fastapi.middleware.cors import CORSMiddleware
 
 # Load environment variables
 load_dotenv()
@@ -25,6 +26,7 @@ PROPERTY_MANAGING_SERVER_MODE = os.getenv(
 PROPERTY_MANAGING_PREFIX = (
     f"/property-managing" if PROPERTY_MANAGING_SERVER_MODE == "release" else ""
 )
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 
 # Initialize the FastAPI app
 app = FastAPI(
@@ -36,8 +38,20 @@ app = FastAPI(
     redoc_url=f"{PROPERTY_MANAGING_PREFIX}/redoc",
 )
 
-PLACES_BASE_URL = os.getenv("PLACES_BASE_URL")
-USERS_BASE_URL = os.getenv("USERS_BASE_URL")
+origins = [
+    FRONTEND_URL,
+    "http://localhost",
+    "http://localhost:3000",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 # Circuit Breaker
 breaker = pybreaker.CircuitBreaker(fail_max=5, reset_timeout=30)
@@ -93,7 +107,9 @@ def get_property_from_supabase(property_id: str):
     response = supabase.table("properties").select("*").eq("id", property_id).execute()
 
     user_id = response.data[0]["user_id"]
-    user_data = requests.get(f"https://oblak.sagaj.si/user-managing/users/{user_id}").json()
+    user_data = requests.get(
+        f"https://oblak.sagaj.si/user-managing/users/{user_id}"
+    ).json()
 
     response.data[0]["user_data"] = user_data
 
