@@ -24,7 +24,7 @@ PROPERTY_MANAGING_SERVER_MODE = os.getenv(
     "PROPERTY_MANAGING_SERVER_MODE", "development"
 )
 PROPERTY_MANAGING_PREFIX = (
-    f"/property-managing" if PROPERTY_MANAGING_SERVER_MODE == "release" else ""
+    f"/property-managing" if PROPERTY_MANAGING_SERVER_MODE == "release" else "/property-managing"
 )
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 
@@ -266,7 +266,7 @@ def update_property_in_supabase(property_id: str, property: PropertyUpdate):
 async def update_property(property_id: str, property: PropertyUpdate):
     try:
         data = update_property_in_supabase(property_id, property)
-        return data.data[0]
+        return data
 
     except RetryError as retry_error:
         raise HTTPException(
