@@ -40,7 +40,7 @@ PLACES_BASE_URL = os.getenv("PLACES_BASE_URL")
 USERS_BASE_URL = os.getenv("USERS_BASE_URL")
 
 # Circuit Breaker
-breaker = pybreaker.CircuitBreaker(fail_max=3, reset_timeout=30)
+breaker = pybreaker.CircuitBreaker(fail_max=5, reset_timeout=30)
 
 
 # Retry Configuration
@@ -93,7 +93,7 @@ def get_property_from_supabase(property_id: str):
     response = supabase.table("properties").select("*").eq("id", property_id).execute()
 
     user_id = response.data[0]["user_id"]
-    user_data = requests.get(f"{USERS_BASE_URL}/users/{user_id}").json()
+    user_data = requests.get(f"https://oblak.sagaj.si/user-managing/users/{user_id}").json()
 
     response.data[0]["user_data"] = user_data
 
