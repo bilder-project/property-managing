@@ -1,8 +1,8 @@
 from fastapi import FastAPI, HTTPException
-from models import Property, PropertyUpdate
-from auth_handler import get_supabase_client
+from src.models import Property, PropertyUpdate
+from src.auth_handler import get_supabase_client
 import pybreaker
-import re
+import os
 import requests
 from tenacity import (
     retry,
@@ -13,6 +13,9 @@ from tenacity import (
 )
 
 app = FastAPI()
+
+PLACES_BASE_URL = os.getenv("PLACES_BASE_URL")
+USERS_BASE_URL = os.getenv("USERS_BASE_URL")
 
 # Circuit Breaker
 breaker = pybreaker.CircuitBreaker(fail_max=3, reset_timeout=30)
@@ -38,9 +41,6 @@ def create_property_in_supabase(property: Property):
     supabase = get_supabase_client()
 
     response = supabase.table("properties").insert(property.dict()).execute()
-
-    if response.status_code != 200:
-        raise HTTPException(status_code=response.status_code, detail=response.text)
 
     return response
 
@@ -76,8 +76,10 @@ def get_property_from_supabase(property_id: str):
 
     response = supabase.table("properties").select("*").eq("id", property_id).execute()
 
-    if response.status_code != 200:
-        raise HTTPException(status_code=response.status_code, detail=response.text)
+    user_id = response.data[0]["user_id"]
+    user_data = requests.get(f"{USERS_BASE_URL}/users/{user_id}").json()
+
+    response.data[0]["user_data"] = user_data
 
     return response
 
@@ -86,8 +88,8 @@ def get_property_from_supabase(property_id: str):
 @app.get("/properties/{property_id}")
 async def get_property(property_id: str):
     try:
-        data = get_property_from_supabase(property_id)
-        return data
+        response = get_property_from_supabase(property_id)
+        return response.data[0]
 
     except RetryError as retry_error:
         raise HTTPException(
@@ -112,9 +114,6 @@ def get_properties_from_supabase():
     supabase = get_supabase_client()
 
     response = supabase.table("properties").select("*").execute()
-
-    if response.status_code != 200:
-        raise HTTPException(status_code=response.status_code, detail=response.text)
 
     return response
 
@@ -150,11 +149,6 @@ def get_properties_from_user_from_supabase(user_id: str):
 
     response = supabase.table("properties").select("*").eq("user_id", user_id).execute()
 
-    if response.data == []:
-        raise HTTPException(
-            status_code=404, detail=str("No properties found for requested user.")
-        )
-
     return response
 
 
@@ -189,12 +183,6 @@ def delete_property_from_supabase(property_id: str):
 
     response = supabase.table("properties").delete().eq("id", property_id).execute()
 
-    if response.data == []:
-        raise HTTPException(
-            status_code=404,
-            detail=str("No properties found with ID {property_id}."),
-        )
-
     return response
 
 
@@ -203,7 +191,7 @@ def delete_property_from_supabase(property_id: str):
 async def delete_property(property_id: str):
     try:
         data = delete_property_from_supabase(property_id)
-        return data
+        return [{"Property deleted successfully: ": data}]
 
     except RetryError as retry_error:
         raise HTTPException(
@@ -236,12 +224,6 @@ def update_property_in_supabase(property_id: str, property: PropertyUpdate):
         supabase.table("properties").update(update_data).eq("id", property_id).execute()
     )
 
-    if response.data == []:
-        raise HTTPException(
-            status_code=404,
-            detail=str("No properties found with ID {property_id}."),
-        )
-
     return response
 
 
@@ -250,7 +232,7 @@ def update_property_in_supabase(property_id: str, property: PropertyUpdate):
 async def update_property(property_id: str, property: PropertyUpdate):
     try:
         data = update_property_in_supabase(property_id, property)
-        return {"Property updated successfully: ": data}
+        return data.data[0]
 
     except RetryError as retry_error:
         raise HTTPException(

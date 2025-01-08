@@ -12,6 +12,9 @@ class Property(BaseModel):
     type: str
     location: str
     size: int
+    location_point: str
+    location_id: str
+    user_data: str
 
 class PropertyUpdate(BaseModel):
     name: Optional[str] = None
@@ -22,5 +25,7 @@ class PropertyUpdate(BaseModel):
     user_id: Optional[str] = None
     image: Optional[str] = None
     type: Optional[str] = None
-    location: Optional[str] = None
     size: Optional[int] = None
+    location_point: Optional[str] = None
+    location_id: Optional[str] = None
+    user_data: Optional[str] = None
