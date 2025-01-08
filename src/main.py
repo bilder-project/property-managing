@@ -84,7 +84,7 @@ def create_property_in_supabase(property: Property):
 async def create_property(property: Property):
     try:
         data = create_property_in_supabase(property)
-        return {"Property added successfully: ": data}
+        return data
     except RetryError:
         raise HTTPException(
             status_code=503,
