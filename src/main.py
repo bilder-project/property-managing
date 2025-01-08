@@ -23,7 +23,14 @@ PROPERTY_MANAGING_SERVER_MODE = os.getenv("PROPERTY_MANAGING_SERVER_MODE", "deve
 PROPERTY_MANAGING_PREFIX = f"/property-managing" if PROPERTY_MANAGING_SERVER_MODE == "release" else ""
 
 # Initialize the FastAPI app
-app = FastAPI()
+app = FastAPI(
+    title="Property Managing API",
+    description="API for managing properties",
+    version="1.0.0",
+    openapi_url=f"{PROPERTY_MANAGING_PREFIX}/openapi.json",
+    docs_url=f"{PROPERTY_MANAGING_PREFIX}/docs",
+    redoc_url=f"{PROPERTY_MANAGING_PREFIX}/redoc",
+)
 
 # Circuit Breaker
 breaker = pybreaker.CircuitBreaker(fail_max=3, reset_timeout=30)
