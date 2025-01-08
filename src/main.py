@@ -133,7 +133,7 @@ def get_properties_from_supabase():
 
 
 # Get all properties
-@app.get("/properties")
+@app.get(f"{PROPERTY_MANAGING_PREFIX}/properties")
 async def get_properties():
     try:
         data = get_properties_from_supabase()
@@ -167,7 +167,7 @@ def get_properties_from_user_from_supabase(user_id: str):
 
 
 # Get all properties of a user with ID
-@app.get("/properties/user/{user_id}")
+@app.get(f"{PROPERTY_MANAGING_PREFIX}" + "/properties/user/{user_id}")
 async def get_properties_of_user(user_id: str):
     try:
         data = get_properties_from_user_from_supabase(user_id)
@@ -201,7 +201,7 @@ def delete_property_from_supabase(property_id: str):
 
 
 # Delete property with ID
-@app.delete("/properties/{property_id}")
+@app.delete(f"{PROPERTY_MANAGING_PREFIX}" + "/properties/{property_id}")
 async def delete_property(property_id: str):
     try:
         data = delete_property_from_supabase(property_id)
@@ -242,7 +242,7 @@ def update_property_in_supabase(property_id: str, property: PropertyUpdate):
 
 
 # Update property with ID
-@app.put("/properties/{property_id}")
+@app.put(f"{PROPERTY_MANAGING_PREFIX}" + "/properties/{property_id}")
 async def update_property(property_id: str, property: PropertyUpdate):
     try:
         data = update_property_in_supabase(property_id, property)
