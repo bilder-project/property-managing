@@ -24,9 +24,11 @@ PROPERTY_MANAGING_SERVER_MODE = os.getenv(
     "PROPERTY_MANAGING_SERVER_MODE", "development"
 )
 PROPERTY_MANAGING_PREFIX = (
-    f"/property-managing" if PROPERTY_MANAGING_SERVER_MODE == "release" else ""
+    f"/property-managing" if PROPERTY_MANAGING_SERVER_MODE == "release" else "/property-managing"
 )
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
+PLACES_BASE_URL = os.getenv("PLACES_BASE_URL")
+USERS_BASE_URL = os.getenv("USERS_BASE_URL")
 
 # Initialize the FastAPI app
 app = FastAPI(
@@ -53,11 +55,10 @@ app.add_middleware(
 )
 
 
-PLACES_BASE_URL = os.getenv("PLACES_BASE_URL")
-USERS_BASE_URL = os.getenv("USERS_BASE_URL")
+
 
 # Circuit Breaker
-breaker = pybreaker.CircuitBreaker(fail_max=3, reset_timeout=30)
+breaker = pybreaker.CircuitBreaker(fail_max=5, reset_timeout=30)
 
 
 # Retry Configuration
@@ -87,7 +88,7 @@ def create_property_in_supabase(property: Property):
 async def create_property(property: Property):
     try:
         data = create_property_in_supabase(property)
-        return {"Property added successfully: ": data}
+        return data
     except RetryError:
         raise HTTPException(
             status_code=503,
@@ -110,7 +111,9 @@ def get_property_from_supabase(property_id: str):
     response = supabase.table("properties").select("*").eq("id", property_id).execute()
 
     user_id = response.data[0]["user_id"]
-    user_data = requests.get(f"{USERS_BASE_URL}/users/{user_id}").json()
+    user_data = requests.get(
+        f"https://oblak.sagaj.si/user-managing/users/{user_id}"
+    ).json()
 
     response.data[0]["user_data"] = user_data
 
@@ -141,19 +144,23 @@ async def get_property(property_id: str):
 # Helper function with Circuit Breaker for getting data
 @retry_strategy
 @breaker
-def get_properties_from_supabase():
+def get_properties_from_supabase(count: int):
     supabase = get_supabase_client()
 
-    response = supabase.table("properties").select("*").execute()
+    if count == 0:
+        response = supabase.table("properties").select("*").execute()
+    else:
+        response = supabase.table("properties").select("*").limit(count).execute()
 
     return response
 
 
 # Get all properties
-@app.get("/properties")
-async def get_properties():
+@app.get(f"{PROPERTY_MANAGING_PREFIX}/properties")
+# Make count not required
+async def get_properties(count: int = 0):
     try:
-        data = get_properties_from_supabase()
+        data = get_properties_from_supabase(count)
         return data
 
     except RetryError as retry_error:
@@ -184,7 +191,7 @@ def get_properties_from_user_from_supabase(user_id: str):
 
 
 # Get all properties of a user with ID
-@app.get("/properties/user/{user_id}")
+@app.get(f"{PROPERTY_MANAGING_PREFIX}" + "/properties/user/{user_id}")
 async def get_properties_of_user(user_id: str):
     try:
         data = get_properties_from_user_from_supabase(user_id)
@@ -218,7 +225,7 @@ def delete_property_from_supabase(property_id: str):
 
 
 # Delete property with ID
-@app.delete("/properties/{property_id}")
+@app.delete(f"{PROPERTY_MANAGING_PREFIX}" + "/properties/{property_id}")
 async def delete_property(property_id: str):
     try:
         data = delete_property_from_supabase(property_id)
@@ -259,11 +266,11 @@ def update_property_in_supabase(property_id: str, property: PropertyUpdate):
 
 
 # Update property with ID
-@app.put("/properties/{property_id}")
+@app.put(f"{PROPERTY_MANAGING_PREFIX}" + "/properties/{property_id}")
 async def update_property(property_id: str, property: PropertyUpdate):
     try:
         data = update_property_in_supabase(property_id, property)
-        return data.data[0]
+        return data
 
     except RetryError as retry_error:
         raise HTTPException(
