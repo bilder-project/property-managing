@@ -27,6 +27,7 @@ PROPERTY_MANAGING_PREFIX = (
     f"/property-managing" if PROPERTY_MANAGING_SERVER_MODE == "release" else "/property-managing"
 )
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
+BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
 PLACES_BASE_URL = os.getenv("PLACES_BASE_URL")
 USERS_BASE_URL = os.getenv("USERS_BASE_URL")
 
@@ -42,6 +43,7 @@ app = FastAPI(
 
 origins = [
     FRONTEND_URL,
+    BACKEND_URL,
     "http://localhost",
     "http://localhost:3000",
 ]
@@ -53,9 +55,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-
 
 # Circuit Breaker
 breaker = pybreaker.CircuitBreaker(fail_max=5, reset_timeout=30)
