@@ -14,6 +14,8 @@ from tenacity import (
 )
 from dotenv import load_dotenv
 from fastapi.middleware.cors import CORSMiddleware
+from kafka import KafkaProducer, KafkaConsumer
+import json
 
 # Load environment variables
 load_dotenv()
@@ -28,8 +30,10 @@ PROPERTY_MANAGING_PREFIX = (
 )
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
-PLACES_BASE_URL = os.getenv("PLACES_BASE_URL")
-USERS_BASE_URL = os.getenv("USERS_BASE_URL")
+
+KAFKA_BROKER = os.getenv("KAFKA_BROKER", "localhost")
+KAFKA_PORT = os.getenv("KAFKA_PORT", "9092")
+
 
 # Initialize the FastAPI app
 app = FastAPI(
@@ -120,9 +124,16 @@ def get_property_from_supabase(property_id: str):
 
 
 # Get property with ID
-@app.get(f"{PROPERTY_MANAGING_PREFIX}" + "/properties/{property_id}")
-async def get_property(property_id: str):
+@app.get(f"{PROPERTY_MANAGING_PREFIX}" + "/properties/{property_id}/{user_id}")
+async def get_property(property_id: str, user_id: str):
     try:
+        producer = KafkaProducer(bootstrap_servers=f"{KAFKA_BROKER}:{KAFKA_PORT}")
+        message = {
+            "user_id": user_id,
+            "property_id": property_id
+        }
+        producer.send('property-click-events', key='PropertyViewed', value=json.dumps(message).encode("utf-8"))
+        producer.flush()
         response = get_property_from_supabase(property_id)
         return response.data[0]
 
