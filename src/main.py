@@ -13,6 +13,7 @@ from tenacity import (
     RetryError,
 )
 from dotenv import load_dotenv
+from fastapi.middleware.cors import CORSMiddleware
 
 # Load environment variables
 load_dotenv()
@@ -25,6 +26,7 @@ PROPERTY_MANAGING_SERVER_MODE = os.getenv(
 PROPERTY_MANAGING_PREFIX = (
     f"/property-managing" if PROPERTY_MANAGING_SERVER_MODE == "release" else ""
 )
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 
 # Initialize the FastAPI app
 app = FastAPI(
@@ -35,6 +37,21 @@ app = FastAPI(
     docs_url=f"{PROPERTY_MANAGING_PREFIX}/docs",
     redoc_url=f"{PROPERTY_MANAGING_PREFIX}/redoc",
 )
+
+origins = [
+    FRONTEND_URL,
+    "http://localhost",
+    "http://localhost:3000",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 PLACES_BASE_URL = os.getenv("PLACES_BASE_URL")
 USERS_BASE_URL = os.getenv("USERS_BASE_URL")
