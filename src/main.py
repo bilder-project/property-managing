@@ -16,6 +16,7 @@ from dotenv import load_dotenv
 from fastapi.middleware.cors import CORSMiddleware
 from kafka import KafkaProducer, KafkaConsumer
 import json
+import logging
 
 # Load environment variables
 load_dotenv()
@@ -34,6 +35,7 @@ BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
 KAFKA_BROKER = os.getenv("KAFKA_BROKER", "localhost")
 KAFKA_PORT = os.getenv("KAFKA_PORT", "9092")
 
+logging.basicConfig(level=logging.INFO)
 
 # Initialize the FastAPI app
 app = FastAPI(
@@ -124,31 +126,47 @@ def get_property_from_supabase(property_id: str):
 
 
 
-# Get property with ID
+
 @app.get(f"{PROPERTY_MANAGING_PREFIX}" + "/properties/{property_id}/{user_id}")
 async def get_property(property_id: str, user_id: str):
     try:
+        logging.info(f"Received request for property_id={property_id}, user_id={user_id}")
+
+        # Initialize Kafka producer
         producer = KafkaProducer(bootstrap_servers=f"{KAFKA_BROKER}:{KAFKA_PORT}")
         message = {
             "user_id": user_id,
             "property_id": property_id
         }
-        producer.send('property-click-events', key='PropertyViewed', value=json.dumps(message).encode("utf-8"))
+        # Send Kafka event
+        producer.send('property-click-events', key=b'PropertyViewed', value=json.dumps(message).encode("utf-8"))
         producer.flush()
+        logging.info(f"Sent Kafka message: {message}")
+
+        # Fetch property from Supabase
         response = get_property_from_supabase(property_id)
-        return response.data[0]
+        logging.info(f"Supabase response: {response}")
+
+        # Validate and return the response
+        if response and response.data:
+            return response.data[0]
+        else:
+            raise HTTPException(status_code=404, detail=f"Property with ID {property_id} not found.")
 
     except RetryError as retry_error:
+        logging.error(f"RetryError: {retry_error}")
         raise HTTPException(
             status_code=503,
             detail="Service temporarily unavailable after multiple retry attempts. Please try again later.",
         )
     except pybreaker.CircuitBreakerError:
+        logging.error("CircuitBreakerError: Service unavailable due to repeated failures.")
         raise HTTPException(
             status_code=503,
             detail="Service temporarily unavailable due to repeated failures.",
         )
     except Exception as e:
+        logging.error(f"Unexpected error: {e}")
         raise HTTPException(status_code=400, detail=str(e))
 
 
