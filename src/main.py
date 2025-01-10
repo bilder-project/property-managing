@@ -32,6 +32,8 @@ PROPERTY_MANAGING_PREFIX = (
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
 
+USER_MANAGING_API_URL = os.getenv("USER_MANAGING_API_URL", "http://localhost:8080")
+
 KAFKA_BROKER = os.getenv("KAFKA_BROKER", "localhost")
 KAFKA_PORT = os.getenv("KAFKA_PORT", "9092")
 
@@ -117,7 +119,7 @@ def get_property_from_supabase(property_id: str):
 
     user_id = response.data[0]["user_id"]
     user_data = requests.get(
-        f"https://oblak.sagaj.si/user-managing/users/{user_id}"
+        f"{USER_MANAGING_API_URL}/users/{user_id}"
     ).json()
 
     response.data[0]["user_data"] = user_data

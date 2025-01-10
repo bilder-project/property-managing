@@ -68,6 +68,11 @@ spec:
                 secretKeyRef:
                   name: secrets
                   key: KAFKA_PORT
+            - name: USER_MANAGING_API_URL
+              valueFrom:
+                secretKeyRef:
+                  name: secrets
+                  key: USER_MANAGING_API_URL
           resources:
             limits:
               cpu: "0.1"
