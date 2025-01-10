@@ -123,6 +123,7 @@ def get_property_from_supabase(property_id: str):
     return response
 
 
+
 # Get property with ID
 @app.get(f"{PROPERTY_MANAGING_PREFIX}" + "/properties/{property_id}/{user_id}")
 async def get_property(property_id: str, user_id: str):
