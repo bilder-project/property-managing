@@ -1,7 +1,6 @@
 import os
 import pybreaker
 import requests
-from fastapi import FastAPI, HTTPException, Request
 from fastapi.routing import APIRoute
 from src.models import Property, PropertyUpdate
 from src.auth_handler import get_supabase_client
@@ -20,6 +19,7 @@ import logging
 from prometheus_fastapi_instrumentator import Instrumentator
 from prometheus_client import Counter, Gauge, Summary
 from time import time
+from fastapi import FastAPI, HTTPException, Request
 
 
 # Load environment variables
@@ -158,20 +158,23 @@ def get_property_from_supabase(property_id: str):
 
 
 @app.get(f"{PROPERTY_MANAGING_PREFIX}" + "/properties/{property_id}/{user_id}")
-async def get_property(property_id: str, user_id: str):
+async def get_property(property_id: str, user_id: str = None):
     try:
         logging.info(f"Received request for property_id={property_id}, user_id={user_id}")
 
-        # Initialize Kafka producer
-        producer = KafkaProducer(bootstrap_servers=f"{KAFKA_BROKER}:{KAFKA_PORT}")
-        message = {
-            "user_id": user_id,
-            "property_id": property_id
-        }
-        # Send Kafka event
-        producer.send('property-click-events', key=b'PropertyViewed', value=json.dumps(message).encode("utf-8"))
-        producer.flush()
-        logging.info(f"Sent Kafka message: {message}")
+        # Initialize Kafka producer only if user_id is provided
+        if user_id:
+            producer = KafkaProducer(bootstrap_servers=f"{KAFKA_BROKER}:{KAFKA_PORT}")
+            message = {
+                "user_id": user_id,
+                "property_id": property_id
+            }
+            # Send Kafka event
+            producer.send('property-click-events', key=b'PropertyViewed', value=json.dumps(message).encode("utf-8"))
+            producer.flush()
+            logging.info(f"Sent Kafka message: {message}")
+        else:
+            logging.info("user_id is not provided, skipping Kafka message.")
 
         # Fetch property from Supabase
         response = get_property_from_supabase(property_id)
@@ -197,7 +200,8 @@ async def get_property(property_id: str, user_id: str):
         )
     except Exception as e:
         logging.error(f"Unexpected error: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) 
+
 
 
 # Helper function with Circuit Breaker for getting data
