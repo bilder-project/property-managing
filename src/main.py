@@ -162,10 +162,9 @@ def get_property_from_supabase(property_id: str):
     return response
 
 
-@app.get(f"{PROPERTY_MANAGING_PREFIX}" + "/properties/property")
+@app.get(f"{PROPERTY_MANAGING_PREFIX}" + "/properties/{property_id}")
 async def get_property(
-    property_id: str = Query(...,
-                             description="The ID of the property to fetch"),
+    property_id: str,
     user_id: str = Query(
         None, description="The ID of the user viewing the property (optional)")
 ):
