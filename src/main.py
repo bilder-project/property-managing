@@ -19,14 +19,15 @@ import logging
 from prometheus_fastapi_instrumentator import Instrumentator
 from prometheus_client import Counter, Gauge, Summary
 from time import time
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Query
 
 
 # Load environment variables
 load_dotenv()
 
 # Read environment variables
-PROPERTY_MANAGING_SERVER_PORT = os.getenv("PROPERTY_MANAGING_SERVER_PORT", "8080")
+PROPERTY_MANAGING_SERVER_PORT = os.getenv(
+    "PROPERTY_MANAGING_SERVER_PORT", "8080")
 PROPERTY_MANAGING_SERVER_MODE = os.getenv(
     "PROPERTY_MANAGING_SERVER_MODE", "development"
 )
@@ -36,7 +37,8 @@ PROPERTY_MANAGING_PREFIX = (
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
 
-USER_MANAGING_API_URL = os.getenv("USER_MANAGING_API_URL", "http://localhost:8080")
+USER_MANAGING_API_URL = os.getenv(
+    "USER_MANAGING_API_URL", "http://localhost:8080")
 
 KAFKA_BROKER = os.getenv("KAFKA_BROKER", "localhost")
 KAFKA_PORT = os.getenv("KAFKA_PORT", "9092")
@@ -85,11 +87,15 @@ retry_strategy = retry(
 )
 
 # Initialize Prometheus instrumentator
-Instrumentator().instrument(app).expose(app, endpoint=f"{PROPERTY_MANAGING_PREFIX}/metrics")
+Instrumentator().instrument(app).expose(
+    app, endpoint=f"{PROPERTY_MANAGING_PREFIX}/metrics")
 
 # Additional custom metrics (if needed)
-REQUEST_COUNT = Counter('request_count', 'Total number of requests', ['method', 'endpoint', 'status_code'])
-REQUEST_LATENCY = Summary('request_latency_seconds', 'Latency of requests in seconds')
+REQUEST_COUNT = Counter('request_count', 'Total number of requests', [
+                        'method', 'endpoint', 'status_code'])
+REQUEST_LATENCY = Summary('request_latency_seconds',
+                          'Latency of requests in seconds')
+
 
 @app.middleware("http")
 async def add_prometheus_metrics(request: Request, call_next):
@@ -143,7 +149,8 @@ async def create_property(property: Property):
 @breaker
 def get_property_from_supabase(property_id: str):
     supabase = get_supabase_client()
-    response = supabase.table("properties").select("*").eq("id", property_id).execute()
+    response = supabase.table("properties").select(
+        "*").eq("id", property_id).execute()
 
     user_id = response.data[0]["user_id"]
     user_data = requests.get(
@@ -155,22 +162,28 @@ def get_property_from_supabase(property_id: str):
     return response
 
 
-
-
-@app.get(f"{PROPERTY_MANAGING_PREFIX}" + "/properties/{property_id}/{user_id}")
-async def get_property(property_id: str, user_id: str = None):
+@app.get(f"{PROPERTY_MANAGING_PREFIX}" + "/properties/property")
+async def get_property(
+    property_id: str = Query(...,
+                             description="The ID of the property to fetch"),
+    user_id: str = Query(
+        None, description="The ID of the user viewing the property (optional)")
+):
     try:
-        logging.info(f"Received request for property_id={property_id}, user_id={user_id}")
+        logging.info(
+            f"Received request for property_id={property_id}, user_id={user_id}")
 
         # Initialize Kafka producer only if user_id is provided
         if user_id:
-            producer = KafkaProducer(bootstrap_servers=f"{KAFKA_BROKER}:{KAFKA_PORT}")
+            producer = KafkaProducer(
+                bootstrap_servers=f"{KAFKA_BROKER}:{KAFKA_PORT}")
             message = {
                 "user_id": user_id,
                 "property_id": property_id
             }
             # Send Kafka event
-            producer.send('property-click-events', key=b'PropertyViewed', value=json.dumps(message).encode("utf-8"))
+            producer.send('property-click-events', key=b'PropertyViewed',
+                          value=json.dumps(message).encode("utf-8"))
             producer.flush()
             logging.info(f"Sent Kafka message: {message}")
         else:
@@ -184,7 +197,8 @@ async def get_property(property_id: str, user_id: str = None):
         if response and response.data:
             return response.data[0]
         else:
-            raise HTTPException(status_code=404, detail=f"Property with ID {property_id} not found.")
+            raise HTTPException(
+                status_code=404, detail=f"Property with ID {property_id} not found.")
 
     except RetryError as retry_error:
         logging.error(f"RetryError: {retry_error}")
@@ -193,15 +207,15 @@ async def get_property(property_id: str, user_id: str = None):
             detail="Service temporarily unavailable after multiple retry attempts. Please try again later.",
         )
     except pybreaker.CircuitBreakerError:
-        logging.error("CircuitBreakerError: Service unavailable due to repeated failures.")
+        logging.error(
+            "CircuitBreakerError: Service unavailable due to repeated failures.")
         raise HTTPException(
             status_code=503,
             detail="Service temporarily unavailable due to repeated failures.",
         )
     except Exception as e:
         logging.error(f"Unexpected error: {e}")
-        raise HTTPException(status_code=400, detail=str(e)) 
-
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 # Helper function with Circuit Breaker for getting data
@@ -213,7 +227,8 @@ def get_properties_from_supabase(count: int):
     if count == 0:
         response = supabase.table("properties").select("*").execute()
     else:
-        response = supabase.table("properties").select("*").limit(count).execute()
+        response = supabase.table("properties").select(
+            "*").limit(count).execute()
 
     return response
 
@@ -248,7 +263,8 @@ async def get_properties(count: int = 0):
 def get_properties_from_user_from_supabase(user_id: str):
     supabase = get_supabase_client()
 
-    response = supabase.table("properties").select("*").eq("user_id", user_id).execute()
+    response = supabase.table("properties").select(
+        "*").eq("user_id", user_id).execute()
 
     return response
 
@@ -282,7 +298,8 @@ async def get_properties_of_user(user_id: str):
 def delete_property_from_supabase(property_id: str):
     supabase = get_supabase_client()
 
-    response = supabase.table("properties").delete().eq("id", property_id).execute()
+    response = supabase.table("properties").delete().eq(
+        "id", property_id).execute()
 
     return response
 
@@ -319,10 +336,12 @@ def update_property_in_supabase(property_id: str, property: PropertyUpdate):
     update_data = property.dict(exclude_unset=True)
 
     if not update_data:
-        raise HTTPException(status_code=400, detail="No fields provided for update.")
+        raise HTTPException(
+            status_code=400, detail="No fields provided for update.")
 
     response = (
-        supabase.table("properties").update(update_data).eq("id", property_id).execute()
+        supabase.table("properties").update(
+            update_data).eq("id", property_id).execute()
     )
 
     return response
